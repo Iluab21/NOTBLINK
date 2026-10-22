@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>NOTBLINK OBS Overlay</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Teko:wght@700&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Montserrat', sans-serif;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 25px;
+    }
+
+    /* Container */
+    .hud-card {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      background: rgba(12, 14, 24, 0.85);
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 12px 28px;
+      transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .hud-card.blink-bump {
+      transform: scale(1.1);
+      box-shadow: 0 0 30px rgba(255, 45, 85, 0.8);
+      border-color: #ff2d55;
+    }
+
+    /* Eye Icon with Animation */
+    .eye-icon {
+      font-size: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulseEye 2s infinite ease-in-out;
+    }
+
+    @keyframes pulseEye {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 5px rgba(0, 240, 255, 0.5)); }
+      50% { transform: scale(1.08); filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.9)); }
+    }
+
+    /* Counter Block */
+    .counter-block {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .counter-title {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #94a3b8;
+      font-weight: 700;
+    }
+
+    .counter-value {
+      font-family: 'Teko', sans-serif;
+      font-size: 48px;
+      line-height: 42px;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    }
+
+    /* Boss Meter */
+    .boss-meter-block {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 150px;
+    }
+
+    .boss-title-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: #ff4757;
+      text-transform: uppercase;
+    }
+
+    .meter-track {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .meter-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #ff9f43, #ff4757);
+      box-shadow: 0 0 10px #ff4757;
+      transition: width 0.3s ease-out;
+    }
+
+    /* Action Banner Popup */
+    .action-banner {
+      margin-top: 15px;
+      background: linear-gradient(135deg, rgba(255, 71, 87, 0.9), rgba(255, 107, 129, 0.9));
+      color: #ffffff;
+      padding: 10px 24px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 1px;
+      box-shadow: 0 8px 24px rgba(255, 71, 87, 0.5);
+      border: 2px solid #ffffff;
+      text-transform: uppercase;
+      opacity: 0;
+      transform: translateY(-20px) scale(0.9);
+      transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .action-banner.show {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .action-banner.boss {
+      background: linear-gradient(135deg, #70a1ff, #5352ed);
+      box-shadow: 0 8px 24px rgba(83, 82, 237, 0.6);
+      font-size: 20px;
+    }
+
+    /* Pause Badge */
+    .pause-badge {
+      display: none;
+      background: #ffa502;
+      color: #111422;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 6px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-left: 6px;
+    }
+
+    .hud-card.is-paused {
+      border-color: #ffa502 !important;
+      box-shadow: 0 0 20px rgba(255, 165, 2, 0.5) !important;
+    }
+
+    .hud-card.is-paused .eye-icon {
+      filter: grayscale(0.8) opacity(0.7);
+      animation: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="hud-card" id="hudCard">
+    <div class="eye-icon" id="eyeIcon">👁️</div>
+    <div class="counter-block">
+      <div class="counter-title">
+        <span>Моргания</span>
+        <span class="pause-badge" id="pauseBadge">ПАУЗА</span>
+      </div>
+      <div class="counter-value" id="blinkCount">0</div>
+    </div>
+    <div class="boss-meter-block">
+      <div class="boss-title-row">
+        <span>БОСС</span>
+        <span id="bossCountdown">25</span>
+      </div>
+      <div class="meter-track">
+        <div class="meter-fill" id="meterFill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-banner" id="actionBanner">⚠️ ПОДМЕНА ПРЕДМЕТА!</div>
+
+  <script>
+    const hudCard = document.getElementById('hudCard');
+    const eyeIcon = document.getElementById('eyeIcon');
+    const blinkCountEl = document.getElementById('blinkCount');
+    const bossCountdownEl = document.getElementById('bossCountdown');
+    const meterFill = document.getElementById('meterFill');
+    const actionBanner = document.getElementById('actionBanner');
+    const pauseBadge = document.getElementById('pauseBadge');
+
+    let bannerTimeout = null;
+
+    // Connect to Server-Sent Events (SSE)
+    function connectSSE() {
+      const evtSource = new EventSource('/events');
+
+      evtSource.onmessage = function(e) {
+        try {
+          const data = JSON.parse(e.data);
+          updateHUD(data);
+        } catch (err) {
+          console.error("SSE parse error:", err);
+        }
+      };
+
+      evtSource.onerror = function() {
+        console.warn("SSE connection lost. Reconnecting in 2s...");
+        evtSource.close();
+        setTimeout(connectSSE, 2000);
+      };
+    }
+
+    function updateHUD(data) {
+      // Handle Pause state
+      if (data.is_paused) {
+        hudCard.classList.add('is-paused');
+        pauseBadge.style.display = 'inline-block';
+      } else {
+        hudCard.classList.remove('is-paused');
+        pauseBadge.style.display = 'none';
+      }
+
+      blinkCountEl.textContent = data.blink_count;
+
+      const remaining = data.boss_interval - (data.blink_count % data.boss_interval);
+      bossCountdownEl.textContent = (remaining === data.boss_interval && data.blink_count > 0) ? "0" : remaining;
+
+      const percent = ((data.blink_count % data.boss_interval) / data.boss_interval) * 100;
+      meterFill.style.width = percent + '%';
+
+      if (data.is_blink) {
+        // Blink animation bump
+        eyeIcon.textContent = '😑';
+        hudCard.classList.add('blink-bump');
+        setTimeout(() => {
+          eyeIcon.textContent = '👁️';
+          hudCard.classList.remove('blink-bump');
+        }, 220);
+
+        // Show banner
+        if (data.last_action) {
+          showBanner(data.last_action, data.is_boss);
+        }
+      }
+    }
+
+    function showBanner(text, isBoss) {
+      clearTimeout(bannerTimeout);
+      actionBanner.textContent = text;
+      if (isBoss) {
+        actionBanner.classList.add('boss');
+      } else {
+        actionBanner.classList.remove('boss');
+      }
+      actionBanner.classList.add('show');
+
+      bannerTimeout = setTimeout(() => {
+        actionBanner.classList.remove('show');
+      }, 3500);
+    }
+
+    connectSSE();
+  </script>
+</body>
+</html>

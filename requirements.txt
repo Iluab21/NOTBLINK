@@ -1,0 +1,6 @@
+mediapipe==0.10.14
+opencv-python>=4.8.0
+mcrcon>=0.7.0
+pygame>=2.6.0
+pyautogui>=0.9.54
+numpy
